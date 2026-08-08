@@ -1,0 +1,93 @@
+name: Build APK
+
+# Builds a release APK entirely on GitHub's servers - no local computer,
+# no Flutter install, no Android Studio needed. Runs automatically on every
+# push to main, and can also be triggered manually from the Actions tab.
+on:
+  push:
+    branches: [ main ]
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out the code
+        uses: actions/checkout@v4
+
+      - name: Set up Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          flutter-version: '3.24.0'
+          channel: 'stable'
+
+      - name: Install dependencies
+        run: flutter pub get
+
+      - name: Ensure Android platform files exist
+        run: flutter create --platforms=android --project-name mafia_roles .
+
+      - name: Bump Kotlin Gradle plugin version
+        # flutter create's default template can pin an older Kotlin plugin
+        # version than some plugins (e.g. google_mobile_ads) now require.
+        # Bump it here every run rather than hand-editing a committed
+        # settings.gradle (which flutter create would just overwrite).
+        run: |
+          sed -i 's#id "org.jetbrains.kotlin.android" version "[^"]*"#id "org.jetbrains.kotlin.android" version "2.1.0"#' android/settings.gradle
+
+      - name: Bump Android Gradle Plugin and Gradle wrapper versions
+        # Kotlin 2.1.0 needs a newer Android Gradle Plugin, which in turn
+        # needs a newer Gradle itself - bump both together to stay in sync.
+        run: |
+          sed -i 's#id "com.android.application" version "[^"]*"#id "com.android.application" version "8.6.0"#' android/settings.gradle
+          sed -i 's#distributionUrl=.*#distributionUrl=https\\://services.gradle.org/distributions/gradle-8.7-all.zip#' android/gradle/wrapper/gradle-wrapper.properties
+
+      - name: Pin a consistent Android NDK version
+        # google_mobile_ads, shared_preferences, and webview_flutter all
+        # need a newer NDK than the default template ships with - pin the
+        # highest one they require so they all agree.
+        run: |
+          if grep -q 'ndkVersion = flutter.ndkVersion' android/app/build.gradle; then
+            sed -i 's#ndkVersion = flutter.ndkVersion#ndkVersion = "26.1.10909125"#' android/app/build.gradle
+          else
+            sed -i 's#^android {#android {\n    ndkVersion = "26.1.10909125"#' android/app/build.gradle
+          fi
+
+      - name: Raise compileSdk for audioplayers
+        # audioplayers_android needs compileSdk 35; the default template
+        # only targets 34. Newer SDKs are backward compatible, so this is
+        # safe to bump unconditionally.
+        run: |
+          sed -i 's#compileSdk = flutter.compileSdkVersion#compileSdk = 35#' android/app/build.gradle
+          sed -i 's#compileSdkVersion flutter.compileSdkVersion#compileSdkVersion 35#' android/app/build.gradle
+
+      - name: Patch AndroidManifest.xml for AdMob
+        # flutter create regenerates a plain AndroidManifest.xml every run,
+        # so we re-insert the AdMob App ID meta-data tag here every time
+        # instead of hand-editing a committed manifest (which would just
+        # get overwritten). Swap the value below for your real AdMob App
+        # ID once you have one - this is Google's public TEST ID.
+        run: |
+          sed -i 's#</application>#<meta-data android:name="com.google.android.gms.ads.APPLICATION_ID" android:value="ca-app-pub-3940256099942544~3347511713"/>\n    </application>#' android/app/src/main/AndroidManifest.xml
+
+      - name: Ensure Android auto-backup is enabled
+        # Custom roles are saved via SharedPreferences on-device only. For
+        # them to survive an uninstall + reinstall (restored automatically
+        # by Android's own backup service, tied to the user's Google
+        # account on that device), the app must explicitly allow backups.
+        run: |
+          if ! grep -q 'android:allowBackup' android/app/src/main/AndroidManifest.xml; then
+            sed -i 's#<application#<application\n        android:allowBackup="true"#' android/app/src/main/AndroidManifest.xml
+          fi
+
+      - name: Generate app icons from the club logo
+        run: dart run flutter_launcher_icons
+
+      - name: Build release APK
+        run: flutter build apk --release
+
+      - name: Upload APK
+        uses: actions/upload-artifact@v4
+        with:
+          name: mafia-roles-apk
+          path: build/app/outputs/flutter-apk/app-release.apk
