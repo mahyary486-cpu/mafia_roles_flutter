@@ -1,0 +1,60 @@
+name: mafia_roles
+description: >
+  A lightweight Mafia role-assignment app. Randomly and securely assigns
+  roles to players at the start of a game. Works fully offline for
+  gameplay; ads (when configured) require internet only for themselves.
+publish_to: 'none'
+version: 1.0.0+1
+
+environment:
+  sdk: '>=3.0.0 <4.0.0'
+
+dependencies:
+  flutter:
+    sdk: flutter
+  # Renders the small role thumbnail SVGs.
+  flutter_svg: ^2.0.10
+  # Google AdMob ads (banner on the first screen, interstitial after "End
+  # Game"). Uses Google's public TEST ad unit IDs by default - see
+  # lib/constants/ad_ids.dart to swap in real ones once you have an
+  # AdMob account. If there's no internet, ads simply fail to load and
+  # the rest of the app works normally.
+  google_mobile_ads: ^5.1.0
+  # Saves game-master-written custom roles locally on the device (no
+  # cloud, no account) so they show up as reusable options in future games.
+  shared_preferences: ^2.2.3
+  # Used to call Google Translate's free web endpoint for the in-app
+  # language switcher (see lib/logic/locale_service.dart) - needs
+  # internet on the device when a language other than English/Persian is
+  # picked; falls back to showing the original English text if offline.
+  http: ^1.2.0
+  # Plays short role-action video clips (e.g. the Godfather's shot) from
+  # assets/videos/ - see lib/widgets/role_action_video.dart.
+  video_player: ^2.9.1
+  # Plays the looping night background music - see
+  # lib/logic/night_audio_service.dart.
+  audioplayers: ^6.1.0
+
+dev_dependencies:
+  flutter_test:
+    sdk: flutter
+  flutter_lints: ^4.0.0
+  flutter_launcher_icons: ^0.13.1
+
+flutter:
+  uses-material-design: true
+
+  assets:
+    - assets/icons/
+    - assets/images/
+    - assets/videos/
+    - assets/audio/
+
+# Configuration for the flutter_launcher_icons tool: replaces the default
+# Flutter launcher icon with our own logo. Run via:
+#   dart run flutter_launcher_icons
+flutter_launcher_icons:
+  android: "launcher_icon"
+  ios: false
+  image_path: "assets/images/app_icon.png"
+  min_sdk_android: 21
