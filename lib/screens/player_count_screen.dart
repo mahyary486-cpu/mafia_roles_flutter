@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 
+import '../widgets/tr_text.dart';
 import '../constants/app_colors.dart';
 import '../logic/game_state.dart';
 import '../logic/locale_service.dart';
