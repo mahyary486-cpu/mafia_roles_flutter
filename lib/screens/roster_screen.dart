@@ -58,6 +58,9 @@ class _RosterScreenState extends State<RosterScreen> {
   /// roster forever).
   int? _lastSeenNight;
 
+  /// First target selected for the Bomber's two-target night action.
+  int? _bomberFirstTarget;
+
   /// Whether the speaking-timer card is expanded or rolled up out of
   /// the way (like a shutter). Starts open on Day 1 so the timer is
   /// front and center; auto-collapses once a full speaking round
